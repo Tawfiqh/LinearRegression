@@ -66,6 +66,7 @@ class DataLoader:
 class LinearRegressorHomeMade:
     def __init__(self, normalize=False) -> None:
         self.normalize = normalize
+        self.lambda_rf = 0.3
 
     def initialise_w_b(self, X):
         # y = wX + b
@@ -73,26 +74,39 @@ class LinearRegressorHomeMade:
         self.w = np.random.randn(X.shape[1])
         self.b = np.random.randn()
 
-    def fit(self, X, y, validation_set=None):
-        grid_search_results = []
-        for learning_rate in range(0, 100, 5):
-            learning_rate = learning_rate / 100
-            for epochs in range(0, 1000, 50):
-                loss = self._fit_grid_search_(
-                    X,
-                    y,
-                    learning_rate=learning_rate,
-                    epochs=epochs,
-                    validation_set=validation_set,
-                )
-                grid_search_results.append([loss, learning_rate, epochs])
+    def fit(self, X, y, validation_set=None, run_grid_search=False):
+        if run_grid_search:
+            grid_search_results = []
+            for learning_rate in range(0, 100, 5):
+                learning_rate = learning_rate / 100
+                for epochs in range(0, 1000, 50):
+                    loss = self._fit_grid_search_(
+                        X,
+                        y,
+                        learning_rate=learning_rate,
+                        epochs=epochs,
+                        validation_set=validation_set,
+                    )
+                    grid_search_results.append([loss, learning_rate, epochs])
 
-        df = pd.DataFrame(
-            grid_search_results, columns=["loss", "learning_rate", "epochs"]
-        )
-        pd.options.display.float_format = "{:,.4f}".format
+            df = pd.DataFrame(
+                grid_search_results, columns=["loss", "learning_rate", "epochs"]
+            )
+            pd.options.display.float_format = "{:,.4f}".format
 
-        display(df)
+            display(df)
+
+        else:
+            learning_rate = 0.01
+            epochs = 500
+            loss = self._fit_grid_search_(
+                X,
+                y,
+                learning_rate=learning_rate,
+                epochs=epochs,
+                validation_set=validation_set,
+            )
+            print(f"Finished with loss: {loss}")
 
     def _fit_grid_search_(
         self, X, y, learning_rate=0.01, epochs=5000, validation_set=None
@@ -147,6 +161,10 @@ class LinearRegressorHomeMade:
         plt.show()
         return loss
 
+    def scalar_l1_norm(self):
+        # Sum of abs(weights)
+        return np.linalg.norm(self.w, ord=1)
+
     def calculate_mse(self, y, y_hat):
         mse = np.mean((y_hat - y) ** 2)
         return mse
@@ -157,7 +175,10 @@ class LinearRegressorHomeMade:
 
     def calculate_loss(self, X, y):
         y_hat = self.predict(X)
-        loss = self.calculate_mse(y, y_hat)
+        mse = self.calculate_mse(y, y_hat)
+
+        l1_norm = self.scalar_l1_norm()
+        loss = mse - self.lambda_rf * l1_norm
         return loss
 
     def score(self, X_test, y_actual):
@@ -170,8 +191,15 @@ class LinearRegressorHomeMade:
 
     def calculate_gradients(self, X, y):
         y_hat = self.predict(X)
+        # print(f"X shape:{X.shape}")
+        # print(f"y_hat shape:{y_hat.shape}")
+        # print(f"y shape:{y.shape}")
+        # temp = np.matmul((y_hat - y), X)
+        # print(f"temp shape:{temp.shape}")
 
-        gradient_w = np.mean(2 * np.matmul((y_hat - y), X))  # not sure this is right
+        gradient_w = 2 * np.mean(
+            np.matmul((y_hat - y), X) + (self.lambda_rf * self.w)
+        )  # not sure this is right -- i guess it's transposing (y_hat - y)
         gradient_b = 2 * np.mean(y_hat - y)
 
         return gradient_w, gradient_b
@@ -225,4 +253,32 @@ main()
 #   - initialise a model with them and train it
 #   - save it, yes, your custom model. Does it work in the same way?
 
+
 # %%
+
+
+# - implement L1 and L2 regularisation in your from-scratch linear regression code
+#   - i hope you have made many git commits in this repo before now
+#   - run your from scratch code and benchmark your current training and validation loss with no regularisaton
+#   - create a function to compute the scalar L1 norm which takes in your model weights
+#   - update your loss function to include the penalty
+#     - dont forget the hyperparameter
+#   - How do you need to update your gradient calculations?
+#   - train the model
+#   - discuss: compare the loss curves and loss values before and after regularizing your model
+#     - is this what you expected? why?
+#   - git commit
+#   - do a grid search over a sensible range of regularisation parameters
+# - implement early stopping in your from-scratch linear regression code
+#   - git commit (do not skip this)
+#   - implement an evaluation of your models generalisation performance on the validation set at the end of every epoch
+#   - git commit
+#   - “checkpoint” your model every epoch by saving it
+#     - create a folder called checkpoints
+#     - at the start of training, create a folder within the checkpoints folder with the timestamp as the name
+#     - during training, save each of your model checkpoints here
+#     - save it with a filename which indicates both at which epoch this was saved and the validation loss it achieved
+#   - git commit
+#   - at the end of training for some fixed number of epochs, select the best model and move it to a different folder called best_models
+#   - all of this folder and file creation should be done programatically, not manually
+
