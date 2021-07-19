@@ -74,6 +74,7 @@ class LinearRegressorHomeMade:
         self.w = np.random.randn(X.shape[1])
         self.b = np.random.randn()
 
+    # run the hyper-paramater tuning in a separate class -- paramaters are for the class not for the fit-function
     def fit(self, X, y, validation_set=None, run_grid_search=False):
         if run_grid_search:
             grid_search_results = []
@@ -223,7 +224,8 @@ def main():
     )
 
 
-main()
+if __name__ == "__main__":
+    main()
 
 
 # - from scratch bias-variance trade-off
